@@ -7,10 +7,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Observable;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import algorithem.Demo.MazeAdapter;
 import algorithms.mazeGenerator.GrowingTreeGenerator;
@@ -23,7 +27,7 @@ import algorithms_search.Searcher;
 import algorithms_search.Solution;
 import io.MyCompressorOutputStream;
 import io.MyDecompressorInputStream;
-import presenter.Controller;
+import presenter.Presenter;
 
 /**
  * 
@@ -32,21 +36,33 @@ import presenter.Controller;
  * 
  */
 
-public class MyModel implements Model {
+public class MyModel extends Observable implements Model {
 
-	private Map<String, Solution<Position>> solutions = new ConcurrentHashMap<String, Solution<Position>>();
-	private List<Thread> threads = new ArrayList<Thread>();
+	// private ExecutorService executor;
 
-	private Controller controller;
+	private Presenter presenter;
+	private HashMap<String, Maze3d> MazeNames;
+	private HashMap<String, Solution> MazeSolutions;
+	private ExecutorService threadPool;
+
 	private Map<String, Maze3d> mazes = new ConcurrentHashMap<String, Maze3d>();
 
-	private List<GenerateMazeRunnable> generateMazeTasks = new ArrayList<GenerateMazeRunnable>();
+	private Map<String, Solution<Position>> solutions = new ConcurrentHashMap<String, Solution<Position>>();
+	private Map<Maze3d, Solution<Position>> calculatedSolutions = new ConcurrentHashMap<Maze3d, Solution<Position>>();
+
+	public MyModel() {
+		this.MazeNames = new HashMap<String, Maze3d>();
+		this.MazeSolutions = new HashMap<String, Solution>();
+		threadPool = Executors.newFixedThreadPool(50);
+	}
 
 	@Override
 	public int[][] model_cross_section(int index, String XYZ, String nameOfmaze) {
 
 		int[][] maze2d = null;
 		if (!mazes.containsKey(nameOfmaze)) {
+			setChanged();
+
 			System.out.println(nameOfmaze + " Not Found");
 		}
 
@@ -72,8 +88,8 @@ public class MyModel implements Model {
 	public void model_save_maze(String nameOfmaze, String nameofFile) {
 		if (!mazes.containsKey(nameOfmaze)) {
 
-			System.out.println("Maze name not found");
-
+			setChanged();
+			notifyObservers("display_msg " + "maze name not found");
 		}
 
 		else {
@@ -90,8 +106,11 @@ public class MyModel implements Model {
 				out.flush();
 
 				out.close();
+				setChanged();
 
-				System.out.println("Maze: " + nameOfmaze + " " + " was saved successfully in file " + nameofFile);
+				notifyObservers("display_msg  Maze " + nameOfmaze + " was saved succesfully in the file " + nameofFile);
+				// System.out.println("Maze: " + nameOfmaze + " " + " was saved
+				// successfully in file " + nameofFile);
 			}
 
 			catch (FileNotFoundException e) {
@@ -134,7 +153,12 @@ public class MyModel implements Model {
 			System.out.println("maze loaded from file:");
 			// if (loaded.equals(myMaze))
 			System.out.println(loaded.toString());
-			System.out.println("**ATTENTION** Maze: " + nameOfmaze + " was loaded succesfully from file " + nameOfFile);
+			setChanged();
+			notifyObservers("display_msg  Maze" + nameOfmaze + " was loaded sucssucfully");
+			// succesfully);
+			// from file " + nameOfFile);
+			// System.out.println("**ATTENTION** Maze: " + nameOfmaze + " was
+			// loaded succesfully from file " + nameOfFile);
 			// successfully from file " + nameOfFile);
 
 		}
@@ -159,7 +183,10 @@ public class MyModel implements Model {
 			public void run() {
 
 				if (!mazes.containsKey(nameOfMaze)) {
-					System.out.println("Maze name not found");
+					setChanged();
+					// notifyObservers("maze_solution_ready maze name not
+					// found");
+					// System.out.println("Maze name not found");
 				}
 
 				else {
@@ -171,27 +198,36 @@ public class MyModel implements Model {
 
 					case "BFS":
 						my_algorithm = new BFS<Position>();
+						setChanged();
+						// System.out.println("maze solution ready BFS");
+						notifyObservers("solution_ready " + nameOfMaze);
 						break;
 					case "DFS":
 						my_algorithm = new DFS<Position>();
+						setChanged();
+						// System.out.println("maze solution ready DFS");
+
+						notifyObservers("solution_ready " + nameOfMaze);
 
 						break;
 					default:
-						System.out.println("alogirhm not found choose BFS/DFS");
+						setChanged();
+						notifyObservers("display_msg " + "Wrong algorithm choose DFS/BFS");
 						return;
 
 					}
 
 					solutions.put(nameOfMaze, my_algorithm.search(adapter));
 
-					System.out.println("Solution for " + nameOfMaze + " is ready");
+					// System.out.println("Solution for " + nameOfMaze + " is
+					// ready");
 
 				}
 			}
 
 		});
 		thread.start();
-		threads.add(thread);
+		threadPool.submit(thread);
 
 	}
 
@@ -215,8 +251,9 @@ public class MyModel implements Model {
 			generator = new GrowingTreeGenerator();
 			Maze3d maze = generator.generate(floors, rows, cols);
 			mazes.put(name, maze);
+			setChanged();
+			notifyObservers("maze_ready" + name);
 
-			controller.notifyMazeIsReady(name);
 		}
 
 		public void terminate() {
@@ -226,31 +263,31 @@ public class MyModel implements Model {
 	}
 
 	@Override
-	public void setController(Controller controller) {
-		this.controller = controller;
-	}
-
-	@Override
 	public void generateMaze(String name, int floors, int rows, int cols) {
-		GenerateMazeRunnable generateMaze = new GenerateMazeRunnable(name, floors, rows, cols);
-		generateMazeTasks.add(generateMaze);
-		Thread thread = new Thread(generateMaze);
-		thread.start();
-		threads.add(thread);
+		threadPool.submit(new Callable<Maze3d>() {
+
+			@Override
+
+			public Maze3d call() throws Exception {
+				GrowingTreeGenerator Generator = new GrowingTreeGenerator();
+				Maze3d maze = Generator.generate(floors, rows, cols);
+				mazes.put(name, maze);
+				setChanged();
+				notifyObservers("maze_ready " + name);
+				return maze;
+
+			}
+
+		});
+
 	}
 
-	@Override
-	public Maze3d getMaze(String name) {
-		return mazes.get(name);
-
+	public Presenter getPresenter() {
+		return presenter;
 	}
 
-	@Override
-	public void exit() {
-		for (GenerateMazeRunnable task : generateMazeTasks) {
-			task.terminate();
-		}
-
+	public void setPresenter(Presenter presenter) {
+		this.presenter = presenter;
 	}
 
 	@Override
@@ -258,6 +295,7 @@ public class MyModel implements Model {
 
 		if (solutions.containsKey(name)) {
 			Solution<Position> mySolution = solutions.get(name);
+
 			return mySolution;
 		}
 
@@ -286,6 +324,23 @@ public class MyModel implements Model {
 		}
 
 		return sb.toString();
+
+	}
+
+	@Override
+	public Maze3d getMaze(String name) {
+		return mazes.get(name);
+	}
+
+	@Override
+	public void exit() {
+		threadPool.shutdown();
+
+	}
+
+	@Override
+	public void setPresetner(Presenter presenter) {
+		this.presenter = presenter;
 
 	}
 }

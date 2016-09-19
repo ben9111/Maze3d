@@ -4,17 +4,15 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Observable;
 
-import algorithms.mazeGenerator.Maze3d;
 import presenter.Command;
 
 /**
- * @author ben & adam
- *  CLI 
+ * @author ben & adam CLI
  */
-public class CLI {
+public class CLI extends Observable {
 
 	private BufferedReader in;
 	private PrintWriter out;
@@ -29,15 +27,33 @@ public class CLI {
 	}
 
 	private void printMenu() {
-		out.print("Choose command: (");
-		for (String command : commands.keySet()) {
-			out.print(command + ",");
-		}
-		out.println(")");
+		out.println("Choose command:");
+		out.println("1) dir");
+		out.println("2) generate_maze");
+		out.println("3) display");
+		out.println("4) display_cross_section");
+		out.println("5) save_maze");
+		out.println("6) load_maze");
+		out.println("7) solve");
+		out.println("8) display_solution ");
+		out.println("9) exit");
 		out.flush();
+
+		/*
+		 * for (String command : commands.keySet()) { out.print(command + ",");
+		 * } out.println(")"); out.flush();
+		 */
 	}
 
+	/*
+	 * public void Instructions() {
+	 * out.println("Please enter your command according to the following:");
+	 * out.println("To display files pn a directory: dir <path> "); out.
+	 * println("To generate maze3D: generate <name> <#floors> <#rows> <#cols>");
+	 * out.flush(); }
+	 */
 	public void start() {
+
 		Thread thread = new Thread(new Runnable() {
 
 			@Override
@@ -47,23 +63,19 @@ public class CLI {
 					printMenu();
 					try {
 						String commandLine = in.readLine();
-						String arr[] = commandLine.split(" ");
-						String command = arr[0];
+						// System.out.println(commandLine);
+						setChanged();
+						notifyObservers(commandLine);
 
-						if (!commands.containsKey(command)) {
-							out.println("Command doesn't exist");
-						} else {
-							String[] args = null;
-							if (arr.length > 1) {
-								String commandArgs = commandLine.substring(commandLine.indexOf(" ") + 1);
-								args = commandArgs.split(" ");
-							}
-							Command cmd = commands.get(command);
-							cmd.doCommand(args);
+						if (commandLine.equals("exit")) {
 
-							if (command.equals("exit"))
-								break;
+							setChanged();
+							notifyObservers("display_msg " + " bye");
+
+							// System.out.println("Bye bye,exit");
+							break;
 						}
+
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -78,6 +90,5 @@ public class CLI {
 		this.commands = command;
 
 	}
-
 
 }

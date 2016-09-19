@@ -3,12 +3,13 @@ package view;
 import java.io.BufferedReader;
 import java.io.PrintWriter;
 import java.util.HashMap;
+import java.util.Observable;
+import java.util.Observer;
 
 import algorithms.mazeGenerator.Maze3d;
 import algorithms.mazeGenerator.Position;
 import algorithms_search.Solution;
 import presenter.Command;
-import presenter.Controller;
 
 /**
  * @author ben & adam
@@ -18,12 +19,11 @@ import presenter.Controller;
  * 
  */
 
-public class MyView implements View {
+public class MyView extends Observable implements View, Observer {
 
 	private BufferedReader in;
 	private PrintWriter out;
 	private CLI cli;
-	private Controller controller;
 
 	public MyView(BufferedReader in, PrintWriter out) {
 
@@ -31,6 +31,7 @@ public class MyView implements View {
 		this.out = out;
 
 		cli = new CLI(in, out);
+		cli.addObserver(this);
 	}
 
 	@Override
@@ -42,9 +43,9 @@ public class MyView implements View {
 		out.flush();
 	}
 
-	@Override
-	public void setController(Controller controller) {
-		this.controller = controller;
+	public void notifySolutionIsReady(String name) {
+		out.println("Solution " + name + " is ready");
+		out.flush();
 	}
 
 	@Override
@@ -94,6 +95,19 @@ public class MyView implements View {
 	public void view_path(String path) {
 		out.println(path);
 		out.flush();
+	}
+
+	@Override
+	public void displayMessage(String msg) {
+		out.println(msg);
+		out.flush();
+	}
+
+	@Override
+	public void update(Observable o, Object arg) {
+		if (o == cli)
+			setChanged();
+		notifyObservers(arg);
 	}
 
 }

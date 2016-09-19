@@ -4,17 +4,14 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 
-import model.Model;
 import model.MyModel;
-import presenter.Controller;
-import presenter.MyController;
+import presenter.Presenter;
 import view.MyView;
-import view.View;
 
 public class Run {
 
 	/**
-	 * Run function creating the View,Model,and Controller
+	 * Run function creating the View,Model,and presenter
 	 * 
 	 * @param args
 	 */
@@ -23,13 +20,16 @@ public class Run {
 		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 		PrintWriter out = new PrintWriter(System.out);
 
-		View view = new MyView(in, out);
-		Model model = new MyModel();
+		MyView ui = new MyView(in, out); // ui its like Game2048View
+		MyModel m = new MyModel(); // m its like Game2048 Model
 
-		Controller controller = new MyController(view, model);
-		view.setController(controller);
-		model.setController(controller);
-		view.start();
+		Presenter p = new Presenter(ui, m);
+
+		ui.addObserver(p);
+		m.addObserver(p);
+
+		ui.start();
+
 	}
 
 }

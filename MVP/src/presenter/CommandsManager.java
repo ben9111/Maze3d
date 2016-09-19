@@ -10,17 +10,18 @@ import view.View;
 
 /**
  * @author ben & adam
- * @category 
- * @param view , model
+ * @category @param view , model
  */
 public class CommandsManager {
 
 	private Model model;
 	private View view;
+	HashMap<String, Command> commands;
 
 	public CommandsManager(Model model, View view) {
 		this.model = model;
 		this.view = view;
+		commands = getCommandsMap();
 	}
 
 	public HashMap<String, Command> getCommandsMap() {
@@ -34,7 +35,25 @@ public class CommandsManager {
 		commands.put("solve", new solveMaze());
 		commands.put("display_solution", new display_solution());
 		commands.put("exit", new exit());
+		commands.put("maze_ready", new MazeReadyCommand());
+		commands.put("solution_ready", new MazeSolutionIsReady());
+		commands.put("display_msg", new DisplayMessage());
 		return commands;
+	}
+
+	public class DisplayMessage implements Command {
+
+		@Override
+		public void doCommand(String[] args) {
+			StringBuilder sd = new StringBuilder();
+
+			for (String s : args) {
+				sd.append(s + " ");
+			}
+
+			view.displayMessage(sd.toString());
+
+		}
 	}
 
 	public class displayPath implements Command {
@@ -137,6 +156,57 @@ public class CommandsManager {
 			String name = args[0];
 			Maze3d maze = model.getMaze(name);
 			view.displayMaze(maze);
+		}
+
+	}
+
+	public void executCommand(String commandLine) {
+
+		String arr[] = commandLine.split(" "); //
+
+		String command = arr[0];
+
+		if (!commands.containsKey(command)) {
+
+			view.displayMessage("Command doesn't exist");
+
+		}
+
+		else {
+
+			String[] args = null;
+			if (arr.length > 1) {
+
+				String commandArgs = commandLine.substring(commandLine.indexOf(" ") + 1);
+				args = commandArgs.split(" ");
+
+			}
+
+			Command cmd = commands.get(command);
+			// commands.put(command, cmd);
+			cmd.doCommand(args);
+
+		}
+
+	}
+
+	class MazeReadyCommand implements Command {
+
+		@Override
+		public void doCommand(String[] args) {
+			String name = args[0];
+			String msg = "maze " + name + " is ready";
+			view.displayMessage(msg);
+		}
+
+	}
+
+	class MazeSolutionIsReady implements Command {
+
+		@Override
+		public void doCommand(String[] args) {
+			String name = args[0];
+			view.notifySolutionIsReady(name);
 		}
 
 	}
