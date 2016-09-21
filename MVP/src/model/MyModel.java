@@ -6,15 +6,17 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Observable;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import algorithem.Demo.MazeAdapter;
 import algorithms.mazeGenerator.GrowingTreeGenerator;
@@ -28,6 +30,8 @@ import algorithms_search.Solution;
 import io.MyCompressorOutputStream;
 import io.MyDecompressorInputStream;
 import presenter.Presenter;
+import properties.Properties;
+import properties.PropertiesLoader;
 
 /**
  * 
@@ -41,19 +45,24 @@ public class MyModel extends Observable implements Model {
 	// private ExecutorService executor;
 
 	private Presenter presenter;
-	private HashMap<String, Maze3d> MazeNames;
-	private HashMap<String, Solution> MazeSolutions;
+	// private HashMap<String, Maze3d> MazeNames;
+	// private HashMap<String, Solution> MazeSolutions;
+	// private HashMap<Maze3d, Solution> caculatedSol;
 	private ExecutorService threadPool;
+	private Properties properties;
 
 	private Map<String, Maze3d> mazes = new ConcurrentHashMap<String, Maze3d>();
-
 	private Map<String, Solution<Position>> solutions = new ConcurrentHashMap<String, Solution<Position>>();
 	private Map<Maze3d, Solution<Position>> calculatedSolutions = new ConcurrentHashMap<Maze3d, Solution<Position>>();
 
 	public MyModel() {
-		this.MazeNames = new HashMap<String, Maze3d>();
-		this.MazeSolutions = new HashMap<String, Solution>();
+
+		// properties = PropertiesLoader.getInstance().getProperties();
+		// threadPool =
+		// Executors.newFixedThreadPool(properties.getNumOfThreads());
+		loadSolutions();
 		threadPool = Executors.newFixedThreadPool(50);
+
 	}
 
 	@Override
@@ -62,8 +71,8 @@ public class MyModel extends Observable implements Model {
 		int[][] maze2d = null;
 		if (!mazes.containsKey(nameOfmaze)) {
 			setChanged();
-
-			System.out.println(nameOfmaze + " Not Found");
+			notifyObservers("display_msg " + nameOfmaze + " maze was not found");
+			// System.out.println(nameOfmaze + " Not Found");
 		}
 
 		else {
@@ -77,7 +86,9 @@ public class MyModel extends Observable implements Model {
 			}
 
 			else
-				System.out.println("Wrong input please Enter X,Y,Z");
+				setChanged();
+			notifyObservers("display_msg " + " Wrong input please enter X,Y,Z");
+			// System.out.println("Wrong input please Enter X,Y,Z");
 
 		}
 		return maze2d;
@@ -178,16 +189,32 @@ public class MyModel extends Observable implements Model {
 	@Override
 	public void model_solve_maze(String nameOfMaze, String algorithms) {
 
-		Thread thread = new Thread(new Runnable() {
-			@Override
-			public void run() {
+		Maze3d theMaze = mazes.get(nameOfMaze);
 
+		threadPool.submit(new Callable<Solution<Position>>() {
+
+			@Override
+			public Solution<Position> call() throws Exception {
 				if (!mazes.containsKey(nameOfMaze)) {
 					setChanged();
-					// notifyObservers("maze_solution_ready maze name not
-					// found");
-					// System.out.println("Maze name not found");
+					notifyObservers("display_msg " + "maze name not found");
 				}
+
+				/*
+				 * for (Maze3d s : calculatedSolutions.keySet()) { if
+				 * (s.getMaze().equals(theMaze)) { System.out.println("MATCH");
+				 * return null;
+				 * 
+				 * }
+				 */
+
+			/*	if (!calculatedSolutions.containsKey(theMaze)) {
+					System.out.println("already existed");
+				}
+				if (solutions.containsKey(nameOfMaze)) {
+					setChanged();
+					notifyObservers("display_msg " + " solution is ready, and already existed");
+				}*/
 
 				else {
 					Maze3d myMaze = mazes.get(nameOfMaze);
@@ -199,36 +226,35 @@ public class MyModel extends Observable implements Model {
 					case "BFS":
 						my_algorithm = new BFS<Position>();
 						setChanged();
-						// System.out.println("maze solution ready BFS");
 						notifyObservers("solution_ready " + nameOfMaze);
 						break;
 					case "DFS":
 						my_algorithm = new DFS<Position>();
 						setChanged();
-						// System.out.println("maze solution ready DFS");
-
 						notifyObservers("solution_ready " + nameOfMaze);
 
 						break;
 					default:
 						setChanged();
 						notifyObservers("display_msg " + "Wrong algorithm choose DFS/BFS");
-						return;
+						return null;
 
 					}
 
 					solutions.put(nameOfMaze, my_algorithm.search(adapter));
+					calculatedSolutions.put(theMaze, my_algorithm.search(adapter));
 
-					// System.out.println("Solution for " + nameOfMaze + " is
-					// ready");
+					/*
+					 * System.out.println(calculatedSolutions.keySet());
+					 * System.out.println(calculatedSolutions.get(theMaze));
+					 */
 
 				}
+
+				return (Solution<Position>) solutions;
 			}
 
 		});
-		thread.start();
-		threadPool.submit(thread);
-
 	}
 
 	class GenerateMazeRunnable implements Runnable {
@@ -259,7 +285,6 @@ public class MyModel extends Observable implements Model {
 		public void terminate() {
 			generator.setDone(true);
 		}
-
 	}
 
 	@Override
@@ -267,7 +292,6 @@ public class MyModel extends Observable implements Model {
 		threadPool.submit(new Callable<Maze3d>() {
 
 			@Override
-
 			public Maze3d call() throws Exception {
 				GrowingTreeGenerator Generator = new GrowingTreeGenerator();
 				Maze3d maze = Generator.generate(floors, rows, cols);
@@ -295,16 +319,15 @@ public class MyModel extends Observable implements Model {
 
 		if (solutions.containsKey(name)) {
 			Solution<Position> mySolution = solutions.get(name);
-
 			return mySolution;
 		}
-
+		setChanged();
+		notifyObservers("display_msg " + "Wrong name of maze not found solutions");
 		return null;
 	}
 
 	@Override
 	public String modelPath(String path) {
-
 		StringBuilder sb = new StringBuilder();
 		File folder = null;
 		File[] listOfFiles = null;
@@ -316,14 +339,84 @@ public class MyModel extends Observable implements Model {
 
 			for (File f : listOfFiles) {
 				sb.append(f.toString()).append("\n");
-
 			}
 
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
 		return sb.toString();
+	}
+
+	public void SaveSolutions() {
+		ObjectOutputStream save = null;
+
+		try {
+
+			save = new ObjectOutputStream(new GZIPOutputStream(new FileOutputStream("solutions.dat")));
+			save.writeObject(mazes);
+			save.writeObject(solutions);
+
+		} catch (FileNotFoundException e) {
+			setChanged();
+			notifyObservers("display_msg Error while trying to save the solution into the file!");
+		} catch (IOException e) {
+			setChanged();
+			notifyObservers("display_msg Error while trying to save the solution into the file!");
+
+		} finally {
+
+			try {
+				save.close();
+			} catch (IOException e) {
+				setChanged();
+				notifyObservers("display_msg Error while trying to close the file!");
+			}
+
+		}
+
+	}
+
+	@SuppressWarnings("unchecked")
+	public void loadSolutions() {
+		File file = new File("solutions.dat");
+		if (!file.exists()) {
+			setChanged();
+			notifyObservers("display_msg File do not exist in the our files solutions!");
+			return;
+		}
+
+		ObjectInputStream load = null;
+		try {
+
+			load = new ObjectInputStream(new GZIPInputStream(new FileInputStream("solutions.dat")));
+			mazes = (Map<String, Maze3d>) load.readObject();
+			solutions = (Map<String, Solution<Position>>) load.readObject();
+		} catch (FileNotFoundException e) {
+			setChanged();
+			notifyObservers("display_msg Error while trying to load/read the solution into the file!");
+		}
+
+		catch (IOException e) {
+			setChanged();
+			notifyObservers("display_msg Error while trying to load the solution into the file!");
+		}
+
+		catch (ClassNotFoundException e) {
+			setChanged();
+			notifyObservers("display_msg Error while trying to load the solution into the file!");
+		}
+
+		finally {
+
+			try {
+				load.close();
+			}
+
+			catch (IOException e) {
+				setChanged();
+				notifyObservers("display_msg Error while trying to close the file!");
+			}
+		}
 
 	}
 
@@ -335,8 +428,15 @@ public class MyModel extends Observable implements Model {
 	@Override
 	public void exit() {
 		threadPool.shutdown();
-
+		SaveSolutions();
 	}
+
+	/*
+	 * @Override public boolean equals(Maze3d obj) { //System.out.println(obj);
+	 * return calculatedSolutions.equals(obj);
+	 * 
+	 * }
+	 */
 
 	@Override
 	public void setPresetner(Presenter presenter) {

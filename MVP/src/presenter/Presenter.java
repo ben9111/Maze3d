@@ -13,7 +13,7 @@ public class Presenter implements Observer {
 	private CommandsManager commandsManager;
 
 	/**
-	 * Controller c'tor
+	 * Controller c'tor presenter
 	 * 
 	 * @param view
 	 * @param model

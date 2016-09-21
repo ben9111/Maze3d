@@ -17,5 +17,7 @@ public interface Model {
 	void model_solve_maze(String nameOfMaze, String algorithms);
 	Solution<Position> modelGetSolution(String name);
 	String modelPath(String path);
+	//boolean equals(Maze3d obj);
+	//boolean equals(Maze3d arg0);
 
 }
