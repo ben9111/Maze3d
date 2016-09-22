@@ -14,11 +14,11 @@ public class RunXML {
 
 		XMLEncoder xmlEncoder = null;
 		try {
-			xmlEncoder = new XMLEncoder(new BufferedOutputStream(new FileOutputStream("properties.xml")));
+			xmlEncoder = new XMLEncoder(new FileOutputStream("properties.xml"));
 			xmlEncoder.writeObject(prop);
 
 		} catch (FileNotFoundException e) {
-				e.printStackTrace();
+			e.printStackTrace();
 		} finally {
 			xmlEncoder.close();
 		}

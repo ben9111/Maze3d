@@ -71,15 +71,12 @@ public class CommandsManager {
 	public class exit implements Command {
 		@Override
 		public void doCommand(String[] args) {
-
 			model.exit();
 			view.exit();
-
 		}
 	}
 
 	public class display_solution implements Command {
-
 		@Override
 		public void doCommand(String[] args) {
 

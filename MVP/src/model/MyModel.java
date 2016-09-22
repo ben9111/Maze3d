@@ -53,15 +53,15 @@ public class MyModel extends Observable implements Model {
 
 	private Map<String, Maze3d> mazes = new ConcurrentHashMap<String, Maze3d>();
 	private Map<String, Solution<Position>> solutions = new ConcurrentHashMap<String, Solution<Position>>();
-	private Map<Maze3d, Solution<Position>> calculatedSolutions = new ConcurrentHashMap<Maze3d, Solution<Position>>();
+	// private Map<Maze3d, Solution<Position>> calculatedSolutions = new
+	// ConcurrentHashMap<Maze3d, Solution<Position>>();
 
 	public MyModel() {
 
-		// properties = PropertiesLoader.getInstance().getProperties();
-		// threadPool =
-		// Executors.newFixedThreadPool(properties.getNumOfThreads());
+		properties = PropertiesLoader.getInstance().getProperties();
+		threadPool = Executors.newFixedThreadPool(properties.getNumOfThreads());
 		loadSolutions();
-		threadPool = Executors.newFixedThreadPool(50);
+		// threadPool = Executors.newFixedThreadPool(50);
 
 	}
 
@@ -98,7 +98,6 @@ public class MyModel extends Observable implements Model {
 	@Override
 	public void model_save_maze(String nameOfmaze, String nameofFile) {
 		if (!mazes.containsKey(nameOfmaze)) {
-
 			setChanged();
 			notifyObservers("display_msg " + "maze name not found");
 		}
@@ -113,9 +112,7 @@ public class MyModel extends Observable implements Model {
 
 				out = new MyCompressorOutputStream(new FileOutputStream(nameofFile));
 				out.write(maze.toByteArray());
-
 				out.flush();
-
 				out.close();
 				setChanged();
 
@@ -128,7 +125,6 @@ public class MyModel extends Observable implements Model {
 
 				System.out.println("File " + nameofFile + "not exist");
 				// e.printStackTrace();
-
 			}
 
 			catch (IOException e) {
@@ -144,17 +140,13 @@ public class MyModel extends Observable implements Model {
 	public void model_load_maze(String nameOfFile, String nameOfmaze) {
 
 		Maze3d maze = mazes.get(nameOfmaze);
-
 		InputStream in;
 
 		try {
 
 			in = new MyDecompressorInputStream(new FileInputStream(nameOfFile));
-
 			byte b[] = new byte[maze.toByteArray().length];
-
 			in.read(b);
-
 			in.close();
 
 			Maze3d loaded = new Maze3d(b);
@@ -189,7 +181,7 @@ public class MyModel extends Observable implements Model {
 	@Override
 	public void model_solve_maze(String nameOfMaze, String algorithms) {
 
-		Maze3d theMaze = mazes.get(nameOfMaze);
+		// Maze3d theMaze = mazes.get(nameOfMaze);
 
 		threadPool.submit(new Callable<Solution<Position>>() {
 
@@ -207,14 +199,14 @@ public class MyModel extends Observable implements Model {
 				 * 
 				 * }
 				 */
-
-			/*	if (!calculatedSolutions.containsKey(theMaze)) {
-					System.out.println("already existed");
-				}
+				/*
+				 * if (!calculatedSolutions.containsKey(theMaze)) {
+				 * System.out.println("already existed"); }
+				 */
 				if (solutions.containsKey(nameOfMaze)) {
 					setChanged();
 					notifyObservers("display_msg " + " solution is ready, and already existed");
-				}*/
+				}
 
 				else {
 					Maze3d myMaze = mazes.get(nameOfMaze);
@@ -242,7 +234,8 @@ public class MyModel extends Observable implements Model {
 					}
 
 					solutions.put(nameOfMaze, my_algorithm.search(adapter));
-					calculatedSolutions.put(theMaze, my_algorithm.search(adapter));
+					// calculatedSolutions.put(theMaze,
+					// my_algorithm.search(adapter));
 
 					/*
 					 * System.out.println(calculatedSolutions.keySet());
@@ -351,7 +344,6 @@ public class MyModel extends Observable implements Model {
 		ObjectOutputStream save = null;
 
 		try {
-
 			save = new ObjectOutputStream(new GZIPOutputStream(new FileOutputStream("solutions.dat")));
 			save.writeObject(mazes);
 			save.writeObject(solutions);
@@ -361,13 +353,17 @@ public class MyModel extends Observable implements Model {
 			notifyObservers("display_msg Error while trying to save the solution into the file!");
 		} catch (IOException e) {
 			setChanged();
+			System.out.println(e);
 			notifyObservers("display_msg Error while trying to save the solution into the file!");
 
 		} finally {
 
 			try {
+
 				save.close();
-			} catch (IOException e) {
+			}
+
+			catch (IOException e) {
 				setChanged();
 				notifyObservers("display_msg Error while trying to close the file!");
 			}

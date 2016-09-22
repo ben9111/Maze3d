@@ -59,16 +59,13 @@ public class CLI extends Observable {
 			@Override
 			public void run() {
 				while (true) {
-
 					printMenu();
 					try {
 						String commandLine = in.readLine();
 						// System.out.println(commandLine);
 						setChanged();
 						notifyObservers(commandLine);
-
 						if (commandLine.equals("exit")) {
-
 							setChanged();
 							notifyObservers("display_msg " + " bye");
 
